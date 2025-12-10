@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="text-center mb-5">
+            <h1 class="display-4 mb-3">
+                <i class="fas fa-magic text-primary me-3"></i>
+                Générateur de Publicités IA
+            </h1>
+            <p class="lead text-muted">
+                Analysez le contenu d'un article ou PDF et obtenez des suggestions de publicités pertinentes grâce à l'IA
+            </p>
+        </div>
+
+        <div class="card shadow-lg card-hover">
+            <div class="card-body p-4">
+                <form method="POST" action="{{ url_for('analyze') }}" enctype="multipart/form-data" id="analysisForm">
+                    
+                    <!-- Option URL -->
+                    <div class="mb-4">
+                        <h5 class="card-title mb-3">
+                            <i class="fas fa-link text-primary me-2"></i>
+                            Analyser une URL
+                        </h5>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-globe"></i>
+                            </span>
+                            <input type="url" 
+                                   class="form-control" 
+                                   name="url" 
+                                   id="url"
+                                   placeholder="https://exemple.com/article"
+                                   aria-label="URL de l'article">
+                        </div>
+                        <div class="form-text">
+                            Entrez l'URL d'un article de blog, actualité, ou page web à analyser
+                        </div>
+                    </div>
+
+                    <div class="text-center my-4">
+                        <span class="badge bg-secondary px-3 py-2">OU</span>
+                    </div>
+
+                    <!-- Option PDF -->
+                    <div class="mb-4">
+                        <h5 class="card-title mb-3">
+                            <i class="fas fa-file-pdf text-danger me-2"></i>
+                            Télécharger un PDF
+                        </h5>
+                        <div class="upload-area" id="uploadArea">
+                            <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                            <h6>Glissez-déposez votre PDF ici</h6>
+                            <p class="text-muted mb-3">ou cliquez pour sélectionner un fichier</p>
+                            <input type="file" 
+                                   class="form-control d-none" 
+                                   name="pdf_file" 
+                                   id="pdf_file"
+                                   accept=".pdf"
+                                   aria-label="Fichier PDF">
+                            <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('pdf_file').click()">
+                                <i class="fas fa-folder-open me-2"></i>
+                                Choisir un fichier
+                            </button>
+                        </div>
+                        <div class="form-text">
+                            Formats acceptés: PDF (max 16MB)
+                        </div>
+                        <div id="fileInfo" class="mt-2 d-none">
+                            <div class="alert alert-info">
+                                <i class="fas fa-file-pdf me-2"></i>
+                                <span id="fileName"></span>
+                                <button type="button" class="btn-close float-end" onclick="clearFile()"></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                            <i class="fas fa-magic me-2"></i>
+                            Générer les suggestions publicitaires
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Informations -->
+        <div class="row mt-5">
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center">
+                        <i class="fas fa-brain fa-2x text-primary mb-3"></i>
+                        <h6>Analyse IA</h6>
+                        <p class="text-muted small">Utilise Mistral AI pour comprendre le contexte et le contenu</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center">
+                        <i class="fas fa-bullseye fa-2x text-success mb-3"></i>
+                        <h6>Ciblage Précis</h6>
+                        <p class="text-muted small">Suggestions de publicités adaptées au contenu et au public</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center">
+                        <i class="fas fa-rocket fa-2x text-warning mb-3"></i>
+                        <h6>Résultats Rapides</h6>
+                        <p class="text-muted small">Obtenez vos suggestions en quelques secondes</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('pdf_file');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const urlInput = document.getElementById('url');
+    const form = document.getElementById('analysisForm');
+    const submitBtn = document.getElementById('submitBtn');
+
+    // Drag and drop
+    uploadArea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0 && files[0].type === 'application/pdf') {
+            fileInput.files = files;
+            showFileInfo(files[0]);
+            urlInput.value = ''; // Clear URL when file is selected
+        }
+    });
+
+    // File input change
+    fileInput.addEventListener('change', function(e) {
+        if (e.target.files.length > 0) {
+            showFileInfo(e.target.files[0]);
+            urlInput.value = ''; // Clear URL when file is selected
+        }
+    });
+
+    // URL input change
+    urlInput.addEventListener('input', function() {
+        if (urlInput.value.trim()) {
+            clearFile();
+        }
+    });
+
+    function showFileInfo(file) {
+        fileName.textContent = file.name;
+        fileInfo.classList.remove('d-none');
+    }
+
+    window.clearFile = function() {
+        fileInput.value = '';
+        fileInfo.classList.add('d-none');
+    };
+
+    // Form submission
+    form.addEventListener('submit', function(e) {
+        const hasUrl = urlInput.value.trim();
+        const hasFile = fileInput.files.length > 0;
+
+        if (!hasUrl && !hasFile) {
+            e.preventDefault();
+            alert('Veuillez fournir soit une URL soit un fichier PDF.');
+            return;
+        }
+
+        // Show loading state
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Analyse en cours...';
+        submitBtn.disabled = true;
+    });
+});
+</script>
+{% endblock %}
