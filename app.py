@@ -7,6 +7,7 @@ avec Mistral AI.
 import os
 import tempfile
 import requests
+import uuid
 from flask import Flask, render_template, request, jsonify, flash, redirect, url_for
 from werkzeug.utils import secure_filename
 import fitz  # PyMuPDF
@@ -18,7 +19,6 @@ from bs4 import BeautifulSoup
 app = Flask(__name__)
 
 # Configuration
-UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'pdf'}
 
 # Load configuration
@@ -26,14 +26,16 @@ config_name = os.environ.get('FLASK_CONFIG', 'default')
 if config_name == 'production':
     from config import ProductionConfig
     app.config.from_object(ProductionConfig)
+    # Use system temp directory for serverless environments
+    UPLOAD_FOLDER = tempfile.gettempdir()
 else:
     from config import DevelopmentConfig
     app.config.from_object(DevelopmentConfig)
+    UPLOAD_FOLDER = 'uploads'
+    # Créer le dossier uploads s'il n'existe pas (seulement en dev)
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
-# Créer le dossier uploads s'il n'existe pas
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # Client Mistral AI
 mistral_client = None
@@ -152,15 +154,13 @@ def analyze():
         if 'pdf_file' in request.files and request.files['pdf_file'].filename:
             file = request.files['pdf_file']
             if file and allowed_file(file.filename):
-                filename = secure_filename(file.filename)
-                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                file.save(filepath)
-                
-                content = extract_text_from_pdf(filepath)
-                source_type = "PDF"
-                
-                # Nettoyer le fichier temporaire
-                os.remove(filepath)
+                # Créer un fichier temporaire unique
+                with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
+                    file.save(tmp_file.name)
+                    content = extract_text_from_pdf(tmp_file.name)
+                    source_type = "PDF"
+                    # Nettoyer le fichier temporaire
+                    os.unlink(tmp_file.name)
             else:
                 flash('Fichier PDF invalide.')
                 return redirect(url_for('index'))
