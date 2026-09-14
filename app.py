@@ -126,7 +126,7 @@ Réponds en français avec un format structuré.
         ]
         
         chat_response = mistral_client.chat.complete(
-            model="mistral-large-latest",
+            model="mistral-small-latest",
             messages=messages,
             max_tokens=1000,
             temperature=0.7
