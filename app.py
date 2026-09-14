@@ -11,7 +11,7 @@ import uuid
 from flask import Flask, render_template, request, jsonify, flash, redirect, url_for
 from werkzeug.utils import secure_filename
 import fitz  # PyMuPDF
-from mistralai import Mistral
+from mistralai.client import Mistral
 from urllib.parse import urlparse
 import re
 from bs4 import BeautifulSoup
